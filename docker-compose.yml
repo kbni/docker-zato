@@ -1,0 +1,97 @@
+version: '3'
+services:
+  zato-kvdb:
+    container_name: zato-kvdb
+    build:
+      context: .
+      dockerfile: ./zato-kvdb/Dockerfile
+    ports:
+      - "6379:6379"
+    restart: always
+
+  zato-odb:
+    container_name: zato-odb
+    build:
+      context: .
+      dockerfile: ./zato-odb/Dockerfile
+    ports:
+    - "5432:5432"
+    restart: always
+
+  zato-web-admin:
+    container_name: zato-web-admin
+    build:
+      context: .
+      dockerfile: ./zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/web_admin/run'
+    ports:
+    - "8183:8183"
+    restart: always
+    depends_on:
+    - zato-odb
+    - zato-kvdb
+
+  zato-load-balancer:
+    container_name: zato-load-balancer
+    build:
+      context: .
+      dockerfile: ./zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/load_balancer/run'
+    ports:
+    - "11223:11223"
+    restart: always
+    depends_on:
+    - zato-server01
+    - zato-server02
+    - zato-server03
+    - zato-server04
+
+  zato-server01:
+    container_name: zato-server01
+    build:
+      context: .
+      dockerfile: ./zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server01/run'
+    restart: always
+    depends_on:
+    - zato-odb
+    - zato-kvdb
+
+  zato-server02:
+    container_name: zato-server02
+    build:
+      context: .
+      dockerfile: ./zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server02/run'
+    restart: always
+    depends_on:
+    - zato-odb
+    - zato-kvdb
+
+  zato-server03:
+    container_name: zato-server03
+    build:
+      context: .
+      dockerfile: ./zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server03/run'
+    restart: always
+    depends_on:
+    - zato-odb
+    - zato-kvdb
+
+  zato-server04:
+    container_name: zato-server04
+    build:
+      context: .
+      dockerfile: ./zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server04/run'
+    restart: always
+    depends_on:
+    - zato-odb
+    - zato-kvdb
