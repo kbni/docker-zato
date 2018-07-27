@@ -13,7 +13,7 @@ A `docker-compose.yml` file for building out a [Zato](https://github.com/zatosou
 - This will generate image(s) containing potentially privileged information (`zatobase:latest`).
   Be careful where this image ends up. It must not fall into the wrong hands!
 
-## Usage
+## Usage (non-cluster)
 
 1. Clone the repository
     ```
@@ -37,6 +37,43 @@ A `docker-compose.yml` file for building out a [Zato](https://github.com/zatosou
    ./compose.sh up
    ```
 6. Navigate to the Zato web interface at http://localhost:8183/
+
+## Usage (Docker Swarm)
+
+Not very clean, but it worked!
+
+1. Clone the repository
+    ```
+    git clone https://github.com/kbni/docker-zato.git
+    cd docker-zato
+    ```
+
+2. Run `compose.sh` which will do a whole bunch of stuff for you
+    ```
+    sudo ./compose.sh
+    ```
+    
+3. Modify `docker-compose.yml` so that each service has the following keys:
+   ```
+      image: 172.16.128.70:5000/zato-odb
+      deploy:
+        placement:
+          constraints:
+            - node.role != manager
+   ```
+
+4. Run `docker-compose build` which should build out the images
+    ```
+    sudo docker-compose build
+    ```
+    
+5. Run `docker-compose push` which should send the images to your registry
+    ```
+    sudo docker-compose push
+    ```
+6. Paste your `docker-compose.yml` file into the Stack deployment section of Portainer
+
+## Credentials
 
 _Credentials for various components, including the Zato web admin login can be retrieved from_ `.secrets/env_file`_._
 
