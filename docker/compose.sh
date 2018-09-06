@@ -4,10 +4,10 @@ set -e
 #set -x Use this for debugging
 
 export ZATO_SERVER_COUNT=${ZATO_SERVER_COUNT:-10}
-export PROJECT_DIR="$( cd "$(dirname "$0")" ; pwd -P )"
-export PROJECT_NAME="zatodev"
+export PROJECT_DIR="$( cd "$(dirname "$0")" ; cd .. ; pwd -P )"
+export PROJECT_NAME="${PROJECT_NAME:-"zatodev"}"
 export CONTEXT_DIR="${PROJECT_DIR}"
-export SECRET_DIR="${CONTEXT_DIR}/.secrets"
+export SECRET_DIR="${CONTEXT_DIR}/secrets"
 
 cd "$CONTEXT_DIR" || exit 1
 echo "Project directory: ${PROJECT_DIR}"
@@ -15,7 +15,7 @@ echo "Docker context directory: ${CONTEXT_DIR}"
 
 # Generate our self-signed SSL certificates
 SSL_SUBJECT="/C=AU/ST=Zatoland/L=Zato City/O=Zato"
-OPENSSL_CONIG="${PROJECT_DIR}/openssl-with-ca.cnf"
+OPENSSL_CONIG="${PROJECT_DIR}/docker/openssl-with-ca.cnf"
 if [ ! -e "${SECRET_DIR}/certs/ssl_okay" ]; then
     echo "Generating Zato self-signed certificates..."
     mkdir -p "${SECRET_DIR}/certs"
@@ -42,6 +42,14 @@ if [ ! -e "${SECRET_DIR}/certs/ssl_okay" ]; then
     openssl x509 -req -days 365 -in zato.web_admin.req.csr -CA ./zato.ca.cert.pem \
 			-CAkey zato.ca.key.pem -CAcreateserial -out zato.web_admin.cert.pem
     rm -f zato.web_admin.req.csr
+
+    openssl genrsa -out zato.scheduler.key.pem 2048
+    openssl rsa -in zato.scheduler.key.pem -pubout -out zato.scheduler.key.pub.pem
+    openssl req -new -key zato.scheduler.key.pem -out zato.scheduler.req.csr \
+			-subj "${SSL_SUBJECT}/CN=Zato Dev Scheduler"
+    openssl x509 -req -days 365 -in zato.scheduler.req.csr -CA ./zato.ca.cert.pem \
+			-CAkey zato.ca.key.pem -CAcreateserial -out zato.scheduler.cert.pem
+    rm -f zato.scheduler.req.csr
 
     i=1
     while [ $i -le $ZATO_SERVER_COUNT ]
@@ -75,7 +83,7 @@ if [ ! -e "${SECRET_DIR}/env_file" ]; then
 
     add_env ZATO_BIN "/opt/zato/current/bin/zato"
     add_env POSTGRES_PASSWORD ${POSTGRES_PASSWORD:-"UUID_GEN"}
-    add_env ZATO_POSTGRES_HOST zato-odb  # If you change this, you must also change docker-compose.yml
+    add_env ZATO_POSTGRES_HOST odb  # If you change this, you must also change docker-compose.yml
     add_env ZATO_POSTGRES_PORT ${ZATO_POSTGRES_PORT:-"5432"}
     add_env ZATO_POSTGRES_USER ${ZATO_POSTGRES_USER:-"zato"}
     add_env ZATO_POSTGRES_PASS ${ZATO_POSTGRES_PASS:-"UUID_GEN"}
@@ -84,22 +92,23 @@ if [ ! -e "${SECRET_DIR}/env_file" ]; then
     add_env ZATO_ADMIN_PASSWORD ${ZATO_ADMIN_PASSWORD:-"UUID_GEN"}
     add_env ZATO_TECH_USERNAME ${ZATO_TECH_USERNAME:-"zatoacct"}
     add_env ZATO_TECH_PASSWORD ${ZATO_TECH_PASSWORD:-"UUID_GEN"}
-    add_env ZATO_KVDB_HOST zato-kvdb    # If you change this, you must also change docker-compose.yml
+    add_env ZATO_KVDB_HOST kvdb     # If you change this, you must also change docker-compose.yml
     add_env ZATO_KVDB_PASS ${ZATO_KVDB_PASS:-"UUID_GEN"}
     add_env ZATO_KVDB_PORT ${ZATO_KVDB_PORT:-"6379"}
     add_env ZATO_CLUSTER_NAME ${ZATO_CLUSTER_NAME:-"cluster1"}
-    add_env ZATO_LB_HOST ${ZATO_LB_HOST:-"zato-load-balancer"}
+    add_env ZATO_LB_HOST ${ZATO_LB_HOST:-"load-balancer"}
     add_env ZATO_LB_PORT ${ZATO_LB_PORT:-"11223"}
     add_env ZATO_LB_AGENT_PORT ${ZATO_LB_AGENT_PORT:-"20151"}
     add_env ZATO_CLUSTER_NAME ${ZATO_CLUSTER_NAME:-"cluster1"}
     add_env ZATO_JWT_SECRET ${ZATO_JWT_SECRET:-"FERNET_GEN"}
     add_env ZATO_SECRET_KEY ${ZATO_SECRET_KEY:-"FERNET_GEN"}
+    add_env ZATO_NETWORK_START ${ZATO_NETWORK_START:-"10.9.8."}
 fi
 
 if [[ "$(docker image ls -q zatobase:latest)" == "" ]]; then
-    cd "${CONTEXT_DIR}"
+    cd "${PROJECT_DIR}"
     echo "Building zatobase:latest"
-    docker build . -t zatobase:latest
+    docker build --file docker/Dockerfile . --tag zatobase:latest
 fi
 
 if [[ "$@" == "" ]]; then
@@ -112,7 +121,7 @@ if [[ "$@" == "" ]]; then
     #echo "  clearboth          Clear both"
     echo ""
     echo "Note that compose.sh will automatically supply the following to docker-compose:"
-    echo "  --file '${CONTEXT_DIR}/docker-compose.yml'"
+    echo "  --file '${CONTEXT_DIR}/docker/docker-compose.yml'"
     echo "  --project-directory '${CONTEXT_DIR}'"
     echo "  --project-name '${PROJECT_NAME}'"
     echo ""
@@ -121,7 +130,7 @@ else
     exec docker-compose \
         --project-directory "${CONTEXT_DIR}" \
         --project-name "$PROJECT_NAME" \
-        --file "${CONTEXT_DIR}/docker-compose.yml" \
+        --file "${CONTEXT_DIR}/docker/docker-compose.yml" \
         "$@"
 fi
 

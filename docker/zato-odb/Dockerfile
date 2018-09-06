@@ -1,6 +1,8 @@
 FROM zatobase:latest
+
 RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.5/main/pg_hba.conf && \
     echo "listen_addresses='*'" >> /etc/postgresql/9.5/main/postgresql.conf
+RUN sed -i 's/max_connections = 10/max_connections = 100/' /etc/postgresql/9.5/main/postgresql.conf
 
 ENTRYPOINT sudo -u postgres \
     /usr/lib/postgresql/9.5/bin/postgres \

@@ -13,17 +13,22 @@ function insert_line() {
     sed -i "${ins_line}i$(echo $@)" "${ins_file}"
 }
 
+source /opt/zato/env/build_secrets
+
 function apply_post_hotfix() {
     if [ -f "/opt/zato/env/load_balancer/run/config/repo/zato.config" ]; then
         # Fix the bloody haproxy configuration (why would this listen on 127.0.0.1??)
         haproxy_config="/opt/zato/env/load_balancer/run/config/repo/zato.config"
         agent_config="/opt/zato/env/load_balancer/run/config/repo/lb-agent.conf"
         sed -i 's/bind 127.0.0.1/bind 0.0.0.0/' "$haproxy_config"
+        sed -i 's/timeout connect 15000/timeout connect 60000/' "$haproxy_config"
+        sed -i 's/timeout client 15000/timeout client 60000/' "$haproxy_config"
+        sed -i 's/timeout server 15000/timeout server 60000/' "$haproxy_config"
         sed -i 's/localhost/0.0.0.0/' "$agent_config"
         lineno="$(grep -n 'ZATO begin backend bck_http_plain' "$haproxy_config" | cut -f1 -d:)"
-        for server_id in server{04..01}; do
-            grep --silent "${server_id}" "$haproxy_config" || insert_line "$haproxy_config" "$((lineno+1))" \
-                "server http_plain--${server_id} zato-${server_id}:17010 check inter 2s" \
+        for server_id in {06..01}; do
+            grep --silent "${ZATO_NETWORK_START}1${server_id}" "$haproxy_config" || insert_line "$haproxy_config" "$((lineno+1))" \
+                "server http_plain--server${server_id} ${ZATO_NETWORK_START}1${server_id}:17010 check inter 2s" \
                 "rise 2 fall 2 # ZATO backend bck_http_plain:server--${server_id}"
         done
     fi
@@ -39,8 +44,6 @@ if [[ "$1" == "apply-hotfixes" ]]; then
     apply_post_hotfix
     exit 0
 fi
-
-source /opt/zato/env/build_secrets
 
 function apply_pre_hotfix() {
     # https://github.com/zatosource/zato/issues/856
@@ -95,6 +98,26 @@ function make_zato_odb() {
         postgresql 
 }
 
+function make_zato_scheduler() {
+    sudo -u zato mkdir -p "${ZATO_ENV_PATH}/scheduler/run"
+    sudo -u zato $ZATO_BIN create scheduler "${ZATO_ENV_PATH}/scheduler/run" \
+        --odb_host "$ZATO_POSTGRES_HOST" \
+        --odb_port "$ZATO_POSTGRES_PORT" \
+        --odb_user "$ZATO_POSTGRES_USER" \
+        --odb_db_name "$ZATO_POSTGRES_NAME" \
+        --odb_password "$ZATO_POSTGRES_PASS" \
+        --kvdb_password "$ZATO_KVDB_PASS" \
+        --secret_key "$ZATO_SECRET_KEY" \
+        --cluster_id 1 \
+        --verbose \
+        postgresql "$ZATO_KVDB_HOST" "$ZATO_KVDB_PORT" \
+        "${ZATO_CA_PATH}/scheduler/zato.scheduler.key.pub.pem" \
+        "${ZATO_CA_PATH}/scheduler/zato.scheduler.key.pem" \
+        "${ZATO_CA_PATH}/scheduler/zato.scheduler.cert.pem" \
+        "${ZATO_CA_PATH}/zato.ca.cert.pem" \
+        "${ZATO_CLUSTER_NAME}"
+}
+
 function make_zato_cluster() {
     sudo -u zato $ZATO_BIN create cluster \
         --tech_account_password "$ZATO_TECH_PASSWORD" \
@@ -136,10 +159,10 @@ if [[ "$1" == "build-zato-components" ]]; then
     apply_pre_hotfix
     make_zato_odb
     make_zato_cluster
+    make_zato_scheduler
     make_zato_web_admin
     make_zato_load_balancer
     make_zato_servers server{01..08}
-    apply_post_hotfix
     exit 0
 fi
 

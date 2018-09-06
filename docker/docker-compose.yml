@@ -1,0 +1,190 @@
+version: '2.1'
+services:
+  kvdb:
+    container_name: kvdb
+    build:
+      context: .
+      dockerfile: ./docker/zato-kvdb/Dockerfile
+#    ports:
+#      - "6379:6379"
+    restart: always
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.6
+    volumes:
+    - ./data/redis:/data
+
+  odb:
+    container_name: odb
+    build:
+      context: .
+      dockerfile: ./docker/zato-odb/Dockerfile
+#    ports:
+#    - "5432:5432"
+    restart: always
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.7
+
+  web-admin:
+    container_name: web-admin
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/web_admin/run'
+    ports:
+    - "8183:8183"
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    - load-balancer
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.8
+
+  load-balancer:
+    container_name: load-balancer
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/load_balancer/run'
+    ports:
+    - "11223:11223"
+    restart: always
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.9
+
+  scheduler:
+    container_name: scheduler
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/scheduler/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.10
+
+  server01:
+    container_name: server01
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server01/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.101
+    volumes:
+    - ./zato_extra_paths:/opt/zato/3.0/code/zato_extra_paths
+    - ./docker/zato-component/server-logging.conf:/opt/zato/env/server01/run/config/repo/logging.conf
+
+  server02:
+    container_name: server02
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server02/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.102
+    volumes:
+    - ./zato_extra_paths:/opt/zato/3.0/code/zato_extra_paths
+    - ./docker/zato-component/server-logging.conf:/opt/zato/env/server02/run/config/repo/logging.conf
+
+  server03:
+    container_name: server03
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server03/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.103
+    volumes:
+    - ./zato_extra_paths:/opt/zato/3.0/code/zato_extra_paths
+    - ./docker/zato-component/server-logging.conf:/opt/zato/env/server03/run/config/repo/logging.conf
+
+  server04:
+    container_name: server04
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server04/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.104
+    volumes:
+    - ./zato_extra_paths:/opt/zato/3.0/code/zato_extra_paths
+    - ./docker/zato-component/server-logging.conf:/opt/zato/env/server04/run/config/repo/logging.conf
+
+  server05:
+    container_name: server05
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server05/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.105
+    volumes:
+    - ./zato_extra_paths:/opt/zato/3.0/code/zato_extra_paths
+    - ./docker/zato-component/server-logging.conf:/opt/zato/env/server05/run/config/repo/logging.conf
+
+  server06:
+    container_name: server06
+    build:
+      context: .
+      dockerfile: ./docker/zato-component/Dockerfile
+      args:
+        ZATO_START_DIR: '/opt/zato/env/server06/run'
+    restart: always
+    depends_on:
+    - odb
+    - kvdb
+    networks:
+      zatonet:
+        ipv4_address: 10.9.8.106
+    volumes:
+    - ./zato_extra_paths:/opt/zato/3.0/code/zato_extra_paths
+    - ./docker/zato-component/server-logging.conf:/opt/zato/env/server06/run/config/repo/logging.conf
+
+networks:
+  zatonet:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.9.8.0/24
+         gateway: 10.9.8.1

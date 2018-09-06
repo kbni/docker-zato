@@ -1,3 +1,4 @@
+
 # docker-zato
 
 A `docker-compose.yml` file for building out a [Zato](https://github.com/zatosource/zato) cluster. Created because:
@@ -13,34 +14,13 @@ A `docker-compose.yml` file for building out a [Zato](https://github.com/zatosou
 - This will generate image(s) containing potentially privileged information (`zatobase:latest`).
   Be careful where this image ends up. It must not fall into the wrong hands!
 
-## Usage (non-cluster)
+## Update
 
-1. Clone the repository
-    ```
-    git clone https://github.com/kbni/docker-zato.git
-    cd docker-zato
-    ```
-2. Run `compose.sh` which will do a whole bunch of stuff for you
-    ```
-    ./compose.sh
-    ```
-3. Build the `zatobase:latest` image
-    ```
-    docker build . -t zatobase:latest
-    ```
-4. Build containers which will actually be used in the container
-   ```
-   ./compose.sh build
-   ```
-5. Start them up!
-   ```
-   ./compose.sh up
-   ```
-6. Navigate to the Zato web interface at http://localhost:8183/
+I have decided against running this inside Docker Swarm, instead I have opted to run multiple Zato clusters on indivdual systems. For me, this achieves my goal of having Zato be easier to deploy within our organisation but for scaling this is not particularly useful at all.
 
-## Usage (Docker Swarm)
+Also, I have now moved everything into a `docker` directory because this is a direct copy of what I keep in my primary zato repository; below that primary repository is a handful of other tools used for management of zato and of course services themselves.
 
-Not very clean, but it worked!
+## Usage
 
 1. Clone the repository
     ```
@@ -50,32 +30,24 @@ Not very clean, but it worked!
 
 2. Run `compose.sh` which will do a whole bunch of stuff for you
     ```
-    sudo ./compose.sh
+    ./docker/compose.sh
     ```
-    
-3. Modify `docker-compose.yml` so that each service has the following keys:
+
+3. Build containers which will actually be used in the container
    ```
-      image: 172.16.128.70:5000/zato-odb
-      deploy:
-        placement:
-          constraints:
-            - node.role != manager
+   ./docker/compose.sh build
    ```
 
-4. Run `docker-compose build` which should build out the images
-    ```
-    sudo docker-compose build
-    ```
-    
-5. Run `docker-compose push` which should send the images to your registry
-    ```
-    sudo docker-compose push
-    ```
-6. Paste your `docker-compose.yml` file into the Stack deployment section of Portainer
+4. Start them up!
+   ```
+   ./docker/compose.sh up
+   ```
+
+5. Navigate to the Zato web interface at http://localhost:8183/
 
 ## Credentials
 
-_Credentials for various components, including the Zato web admin login can be retrieved from_ `.secrets/env_file`_._
+_Credentials for various components, including the Zato web admin login can be retrieved from_ `secrets/env_file`_._
 
 ## Challenges
 
@@ -114,4 +86,5 @@ _It also does other things, like generate a secrets file, and certificates..._
 
 I'd just like to take a moment and say that Docker is awesome, thank you Docker people!
 Also, give it up for Dariusz and the rest of the Zato team!
+
 
